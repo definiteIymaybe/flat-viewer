@@ -1,6 +1,6 @@
 import React from "react";
 import { RouteComponentProps } from "react-router-dom";
-import { GoThreeBars, GoX } from "react-icons/go";
+import { GoGrabber, GoX } from "react-icons/go";
 import { BsArrowRightShort } from "react-icons/bs";
 import {
   useDisclosureState,
@@ -245,7 +245,7 @@ export function RepoDetail(props: RepoDetailProps) {
             {...disclosure}
             className="rounded-none focus:outline-none focus:ring lg:hidden text-white text-xl"
           >
-            {disclosure.visible ? <GoX /> : <GoThreeBars />}
+                      {disclosure.visible ? <GoX /> : <GoGrabber />}
           </Disclosure>
         </header>
         <DisclosureContent
