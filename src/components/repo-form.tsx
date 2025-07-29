@@ -5,6 +5,11 @@ import { useHistory, Link } from "react-router-dom";
 import cc from "classcat";
 
 import { Repo } from "../types";
+import { DragAndDropFile } from "./drag-and-drop-file";
+import { useHistory, Link } from "react-router-dom";
+import { csvParse, tsvParse } from "d3-dsv";
+import YAML from "yaml";
+import { useLocalFile } from "./local-file-context";
 
 const initialValues: Repo = {
   owner: "",
@@ -16,7 +21,31 @@ const validationSchema = object().shape({
   name: string().optional(),
 });
 
+function parseFileContent(filename: string, text: string) {
+    const fileType = filename.split(".").pop() || "";
+    try {
+        if (fileType === "csv") {
+            return [{ value: csvParse(text) }];
+        } else if (fileType === "tsv") {
+            return [{ value: tsvParse(text) }];
+        } else if (["json", "geojson", "topojson"].includes(fileType)) {
+            const data = JSON.parse(text);
+            if (Array.isArray(data)) return [{ value: data }];
+            if (data.features) return [{ value: data.features }];
+            return [{ value: data }];
+        } else if (["yml", "yaml"].includes(fileType)) {
+            return [{ value: YAML.parse(text) }];
+        } else {
+            return [{ invalidValue: text }];
+        }
+    } catch (e) {
+        return [{ invalidValue: text }];
+    }
+}
+
 function RepoFormComponent(props: FormikProps<Repo>) {
+    const history = useHistory();
+    const { setFile } = useLocalFile();
   const makeFieldClass = (name: keyof Repo, index: number) =>
     cc([
       `appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:z-10 text-sm`,
@@ -30,6 +59,8 @@ function RepoFormComponent(props: FormikProps<Repo>) {
         "rounded-b-md": index === 1,
       },
     ]);
+
+    // ...existing code...
 
   return (
     <div>
@@ -79,6 +110,20 @@ function RepoFormComponent(props: FormikProps<Repo>) {
           </span>
         </div>
       </div>
+          <div className="mb-6">
+              <DragAndDropFile
+                  accept=".csv,.tsv,.json,.geojson,.topojson,.yml,.yaml"
+                  onFiles={async (files) => {
+                      const file = files[0];
+                      if (!file) return;
+                      const text = await file.text();
+                      const parsed = parseFileContent(file.name, text);
+                      setFile(file.name, parsed);
+                      history.push(`/local/${encodeURIComponent(file.name)}`);
+                  }}
+              />
+              <div className="text-xs text-gray-500 mt-2 text-center">Supported: CSV, TSV, JSON, GeoJSON, TopoJSON, YAML</div>
+          </div>
       <div>
         <div className="text-left flex items-center space-x-2">
           <p className="text-gray-500 text-sm">Start with an example:</p>
@@ -109,7 +154,7 @@ export function RepoForm() {
       validateOnBlur={false}
       validateOnChange={false}
       onSubmit={(values) => {
-        history.push(`/${values.owner}/` + (values.name || ''))
+          history.push(`/${values.owner}/` + (values.name || ""));
       }}
     />
   );
